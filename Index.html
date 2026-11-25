@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wild Animal Pixel Mystery - ESL Classroom Game</title>
+    <!-- Tailwind CSS for responsive layout and UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for classroom game sound effects without external audio files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Font Awesome for crisp classroom icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Fredoka for playful headings and Nunito for legible classroom text -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom Game Styling & Theme Variables */
+        :root {
+            --bg-gradient-start: #ecfdf5;
+            --bg-gradient-end: #d1fae5;
+            --primary-emerald: #059669;
+            --primary-amber: #f59e0b;
+            --card-shadow: 0 12px 30px -5px rgba(6, 78, 59, 0.15);
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, #e0f2fe 50%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        h1, h2, h3, .font-display {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Crisp pixelated rendering on canvas */
+        canvas#animalCanvas {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 1rem;
+        }
+
+        /* 3D Tactile Game Buttons */
+        .game-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            top: 0;
+        }
+        .game-btn:active:not(:disabled) {
+            top: 4px;
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2) !important;
+        }
+        .game-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-emerald {
+            background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 5px 0 #047857;
+        }
+        .btn-amber {
+            background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+            box-shadow: 0 5px 0 #b45309;
+        }
+        .btn-sky {
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            box-shadow: 0 5px 0 #0369a1;
+        }
+        .btn-purple {
+            background: linear-gradient(180deg, #a78bfa 0%, #7c3aed 100%);
+            box-shadow: 0 5px 0 #5b21b6;
+        }
+
+        /* Animations */
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            70% { transform: scale(1.03); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+        }
+        .pulse-hint {
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Custom Scrollbar for Word Bank */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #10b981;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col justify-between p-3 sm:p-6">
+
+    <!-- Top Header & Teacher Controls -->
+    <header class="max-w-6xl w-full mx-auto bg-white/90 backdrop-blur-md rounded-3xl p-4 sm:px-6 shadow-lg border-2 border-emerald-100 flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-md">
+                <i class="fa-solid fa-paw"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-xl sm:text-2xl font-bold text-emerald-900 tracking-tight">Wild Animal Pixel Mystery</h1>
+                    <span class="hidden sm:inline-block bg-emerald-100 text-emerald-800 text-xs font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300">WWF Edition</span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-500 font-semibold">English Vocabulary & Habitat Explorer</p>
+            </div>
+        </div>
+
+        <!-- Classroom Progress & Quick Controls -->
+        <div class="flex items-center gap-2 sm:gap-4 flex-wrap">
+            <!-- Round Counter -->
+            <div class="bg-amber-50 border-2 border-amber-200 px-3.5 py-1.5 rounded-2xl flex items-center gap-2">
+                <i class="fa-solid fa-star text-amber-500"></i>
+                <span class="font-bold text-amber-900 text-sm sm:text-base">Animal <span id="currentRoundDisplay">1</span> / <span id="totalRoundsDisplay">11</span></span>
+            </div>
+
+            <!-- Sound Toggle -->
+            <button id="soundToggleBtn" onclick="toggleSound()" class="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition border border-slate-200" title="Toggle Sound Effects">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-lg"></i>
+            </button>
+
+            <!-- Word Bank Toggle for Students -->
+            <button id="wordBankBtn" onclick="toggleWordBank()" class="px-3.5 py-2 rounded-2xl bg-sky-100 hover:bg-sky-200 text-sky-900 font-bold text-sm transition border border-sky-300 flex items-center gap-2">
+                <i class="fa-solid fa-book-open"></i>
+                <span>Word Bank</span>
+            </button>
+
+            <!-- Shuffle / Restart -->
+            <button onclick="resetGame(true)" class="px-3.5 py-2 rounded-2xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-sm transition border border-emerald-300 flex items-center gap-2" title="Shuffle Animals">
+                <i class="fa-solid fa-shuffle"></i>
+                <span class="hidden md:inline">Shuffle</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Collapsible Student Word Bank Drawer -->
+    <div id="wordBankPanel" class="hidden max-w-6xl w-full mx-auto mb-4 bg-white/95 rounded-3xl p-4 shadow-md border-2 border-sky-200 animate-pop-in">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-sky-700"><i class="fa-solid fa-spell-check mr-1"></i> Classroom Vocabulary Word Bank (Click to pronounce / check off)</span>
+            <button onclick="toggleWordBank()" class="text-slate-400 hover:text-slate-600 text-sm font-bold"><i class="fa-solid fa-xmark"></i> Close</button>
+        </div>
+        <div id="wordBankChips" class="flex flex-wrap gap-2">
+            <!-- Populated dynamically via JS -->
+        </div>
+    </div>
+
+    <!-- Main Game Arena -->
+    <main class="max-w-4xl w-full mx-auto flex flex-col gap-4 my-auto">
+
+        <!-- Pixelation Stage & Controls -->
+        <section class="w-full bg-white rounded-3xl p-4 sm:p-6 shadow-xl border-2 border-emerald-100 flex flex-col items-center">
+            
+            <!-- Level Indicator Bar -->
+            <div class="w-full flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Clarity Level:</span>
+                    <div class="flex flex-wrap gap-1.5" id="levelPills">
+                        <button onclick="setPixelLevel(1)" id="pill-1" class="px-2.5 py-1 rounded-full text-xs font-extrabold transition bg-emerald-600 text-white shadow-sm">
+                            Lvl 1: Super Pixel
+                        </button>
+                        <button onclick="setPixelLevel(2)" id="pill-2" class="px-2.5 py-1 rounded-full text-xs font-extrabold transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            Lvl 2: 50% Pixel
+                        </button>
+                        <button onclick="setPixelLevel(3)" id="pill-3" class="px-2.5 py-1 rounded-full text-xs font-extrabold transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            Lvl 3: 10% Pixel
+                        </button>
+                        <button onclick="setPixelLevel(4)" id="pill-4" class="px-2.5 py-1 rounded-full text-xs font-extrabold transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            Lvl 4: Clear Photo
+                        </button>
+                    </div>
+                </div>
+                <span id="pointsBadge" class="bg-amber-100 text-amber-800 text-xs font-extrabold px-3 py-1 rounded-full border border-amber-300">
+                    <i class="fa-solid fa-trophy mr-1"></i> 400 Pts Possible
+                </span>
+            </div>
+
+            <!-- Interactive Canvas Container -->
+            <div class="relative w-full aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden shadow-inner border-4 border-slate-100 flex items-center justify-center">
+                <!-- Loading Spinner -->
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-800/90 flex flex-col items-center justify-center text-white z-10">
+                    <i class="fa-solid fa-spinner fa-spin text-4xl text-emerald-400 mb-3"></i>
+                    <p class="font-bold text-sm tracking-wide">Loading WWF Wildlife Photo...</p>
+                </div>
+
+                <!-- Pixelation Canvas -->
+                <canvas id="animalCanvas"></canvas>
+
+                <!-- Level Watermark Badge -->
+                <div id="canvasOverlayTag" class="absolute top-3 left-3 bg-black/65 backdrop-blur-sm text-white px-3 py-1 rounded-xl text-xs font-bold border border-white/20 pointer-events-none">
+                    <i class="fa-solid fa-eye-low-vision text-amber-400 mr-1.5"></i>
+                    <span id="levelDescriptionText">Level 1: Very Pixelated (12×9 grid)</span>
+                </div>
+
+                <!-- WWF Photo Credit Tag -->
+                <div class="absolute bottom-2 right-2 bg-black/50 text-white/80 px-2.5 py-0.5 rounded-lg text-[10px] font-semibold pointer-events-none">
+                    WWF Wildlife Conservation Photo
+                </div>
+            </div>
+
+            <!-- Primary Action Buttons Row -->
+            <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                <button id="nextLevelBtn" onclick="advancePixelLevel()" class="game-btn btn-sky text-white font-display font-bold text-base sm:text-lg py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span id="nextLevelBtnText">Level 2: 50% Pixelated</span>
+                </button>
+
+                <button id="revealBtn" onclick="revealAnswer()" class="game-btn btn-amber text-white font-display font-bold text-base sm:text-lg py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 pulse-hint">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <span>Reveal Answer & Habitat</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Classroom Quick Navigation Dots -->
+        <div class="bg-white/90 rounded-2xl p-3.5 shadow-md border border-emerald-100 flex items-center justify-between">
+            <button onclick="prevAnimal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition">
+                <i class="fa-solid fa-chevron-left mr-1"></i> Prev
+            </button>
+            <div id="roundDots" class="flex items-center gap-2 flex-wrap justify-center">
+                <!-- Dots generated by JS -->
+            </div>
+            <button onclick="nextAnimal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition">
+                Next <i class="fa-solid fa-chevron-right ml-1"></i>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Answer & Habitat Pop-Up Modal (Shown when "Reveal Answer & Habitat" is clicked) -->
+    <div id="answerModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div id="answerCard" class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-4 border-emerald-300 animate-pop-in relative">
+            <div class="flex items-start justify-between gap-2 mb-4">
+                <div>
+                    <span class="inline-block bg-amber-400 text-amber-950 text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full mb-1.5 shadow-sm">
+                        <i class="fa-solid fa-check-circle mr-1"></i> Mystery Solved!
+                    </span>
+                    <h2 id="revealedName" class="text-3xl sm:text-4xl font-display font-bold tracking-tight text-white drop-shadow">
+                        Giant Panda
+                    </h2>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="speakAnimalInfo()" class="w-11 h-11 rounded-2xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-lg transition border border-white/30" title="Listen to English Pronunciation">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                    <button onclick="closeAnswerModal()" class="w-11 h-11 rounded-2xl bg-black/25 hover:bg-black/40 text-white flex items-center justify-center text-lg transition border border-white/20" title="Close Pop-Up to View Full Photo">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Where We Can Find Them (Habitat Section) -->
+            <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 mb-3.5 border border-white/20">
+                <div class="flex items-center gap-2 text-amber-300 font-extrabold text-xs uppercase tracking-wider mb-1">
+                    <i class="fa-solid fa-earth-americas text-base"></i>
+                    <span>Where Can We Find Them?</span>
+                </div>
+                <p id="revealedHabitat" class="text-base sm:text-lg font-bold text-white leading-snug">
+                    Bamboo forests in the mountains of central China.
+                </p>
+            </div>
+
+            <!-- Classroom English Fact -->
+            <div class="bg-emerald-950/35 rounded-2xl p-4 mb-5 border border-emerald-400/20">
+                <div class="flex items-center gap-2 text-emerald-200 font-extrabold text-xs uppercase tracking-wider mb-1">
+                    <i class="fa-solid fa-leaf"></i>
+                    <span>WWF Wildlife Fact</span>
+                </div>
+                <p id="revealedFact" class="text-sm sm:text-base text-emerald-50 font-medium leading-relaxed">
+                    Giant pandas spend up to 12 hours a day eating bamboo!
+                </p>
+            </div>
+
+            <!-- Pop-Up Action Buttons -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button onclick="closeAnswerModal()" class="game-btn bg-white/20 hover:bg-white/30 text-white font-display font-bold text-base py-3 px-4 rounded-2xl border border-white/30 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-image"></i>
+                    <span>View Clear Photo</span>
+                </button>
+                <button id="nextAnimalBtn" onclick="nextAnimal()" class="game-btn btn-amber text-slate-950 font-display font-bold text-base py-3 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg">
+                    <span>Next Wild Animal</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- End of Game Summary Modal -->
+    <div id="summaryModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 text-center shadow-2xl border-4 border-emerald-400 animate-pop-in">
+            <div class="w-20 h-20 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center text-4xl mx-auto mb-4 shadow-inner">
+                <i class="fa-solid fa-award"></i>
+            </div>
+            <h2 class="text-3xl font-display font-bold text-emerald-900 mb-2">Amazing Job, Class!</h2>
+            <p class="text-slate-600 font-medium mb-6">
+                You explored all 11 WWF wild animals and learned where they live around the world!
+            </p>
+            <div class="bg-emerald-50 rounded-2xl p-4 mb-6 border border-emerald-200">
+                <p class="text-xs font-extrabold uppercase text-emerald-700 tracking-wider mb-2">Vocabulary Mastered</p>
+                <div class="flex flex-wrap justify-center gap-1.5" id="masteredList"></div>
+            </div>
+            <button onclick="resetGame(true)" class="w-full game-btn btn-emerald text-white font-display font-bold text-lg py-3.5 px-6 rounded-2xl">
+                <i class="fa-solid fa-rotate-right mr-2"></i> Play Again (Shuffled)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * WILD ANIMAL DATABASE (11 Animals requested by the teacher)
+         * Uses verified real-life wildlife photography URLs (WWF & Wikimedia Commons real photos)
+         * with multiple real-photo fallbacks so no words or emojis are ever drawn on the canvas.
+         */
+        const ANIMALS_DATA = [
+            {
+                id: 'sea-turtle',
+                name: 'Sea Turtle',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Hawaii_turtle_2.JPG/960px-Hawaii_turtle_2.JPG',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Green_turtle_swimming_over_coral_reefs_in_Kona.jpg/960px-Green_turtle_swimming_over_coral_reefs_in_Kona.jpg',
+                habitat: 'Warm tropical and subtropical oceans, coral reefs, and coastal beaches around the world.',
+                clue: 'I live in the ocean, breathe air, and carry a hard shell on my back.',
+                fact: 'Sea turtles can hold their breath for hours while sleeping underwater and return to the exact beach where they were born to lay eggs!'
+            },
+            {
+                id: 'giant-panda',
+                name: 'Giant Panda',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Grosser_Panda.JPG/960px-Grosser_Panda.JPG',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Panda_Cub_from_Wolong%2C_Sichuan%2C_China.JPG/960px-Panda_Cub_from_Wolong%2C_Sichuan%2C_China.JPG',
+                habitat: 'Cool, misty bamboo forests high in the mountains of central China.',
+                clue: 'I am a black-and-white bear from China that loves eating bamboo all day.',
+                fact: 'Giant pandas eat between 12 and 38 kilograms of bamboo every single day to stay full of energy!'
+            },
+            {
+                id: 'zebra',
+                name: 'Zebra',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Plains_Zebra_Equus_quagga.jpg/960px-Plains_Zebra_Equus_quagga.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Equus_quagga_burchellii_-_Etosha%2C_2014.jpg/960px-Equus_quagga_burchellii_-_Etosha%2C_2014.jpg',
+                habitat: 'Grasslands, savannas, and open woodlands of eastern and southern Africa.',
+                clue: 'I look like a horse, live in Africa, and wear a coat of black-and-white stripes.',
+                fact: 'Every zebra has a completely unique stripe pattern—just like human fingerprints!'
+            },
+            {
+                id: 'koala-bear',
+                name: 'Koala Bear',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Koala_climbing_tree.jpg/960px-Koala_climbing_tree.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Cutest_Koala.jpg/960px-Cutest_Koala.jpg',
+                habitat: 'Eucalyptus forests along the eastern and southeastern coasts of Australia.',
+                clue: 'I live in Australia, sleep in eucalyptus trees, and carry my baby in a pouch.',
+                fact: 'Even though people call them "koala bears," koalas are actually marsupials and sleep up to 18–20 hours a day!'
+            },
+            {
+                id: 'polar-bear',
+                name: 'Polar Bear',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Polar_Bear_-_Alaska_%28cropped%29.jpg/960px-Polar_Bear_-_Alaska_%28cropped%29.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Ursus_maritimus_4_1996-08-04.jpg/960px-Ursus_maritimus_4_1996-08-04.jpg',
+                habitat: 'Sea ice and snowy coastlines of the freezing Arctic Circle (Canada, Alaska, Greenland, Norway, and Russia).',
+                clue: 'I am the largest bear on Earth with thick white fur that blends into the Arctic snow.',
+                fact: 'Underneath their white fur, polar bears actually have black skin to soak up warmth from the Arctic sun!'
+            },
+            {
+                id: 'kangaroo',
+                name: 'Kangaroo',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Kangaroo_Australia_01_11_2008_-_retouch.JPG/960px-Kangaroo_Australia_01_11_2008_-_retouch.JPG',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Red_kangaroo_-_melbourne_zoo.jpg/960px-Red_kangaroo_-_melbourne_zoo.jpg',
+                habitat: 'Open grasslands, bushlands, and savannas across Australia.',
+                clue: 'I have huge back legs for hopping, a strong tail for balance, and a pouch for my joey.',
+                fact: 'Kangaroos can hop at speeds over 56 km/h (35 mph) and leap more than 8 meters in a single bound!'
+            },
+            {
+                id: 'giraffe',
+                name: 'Giraffe',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Giraffe_Mikumi_National_Park.jpg/960px-Giraffe_Mikumi_National_Park.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Giraffa_camelopardalis_angolensis.jpg/960px-Giraffa_camelopardalis_angolensis.jpg',
+                habitat: 'Open savannas and sunny grasslands in sub-Saharan Africa.',
+                clue: 'I am the tallest land animal in the world with a very long neck and brown spots.',
+                fact: 'A giraffe’s tongue is nearly 50 centimeters long and dark purple-blue to protect it from sunburn while eating tree leaves!'
+            },
+            {
+                id: 'lion',
+                name: 'Lion',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/960px-Lion_waiting_in_Namibia.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/020_The_lion_king_Snyggve_in_the_Serengeti_National_Park_Photo_by_Giles_Laurent.jpg/960px-020_The_lion_king_Snyggve_in_the_Serengeti_National_Park_Photo_by_Giles_Laurent.jpg',
+                habitat: 'Grassy plains and open savannas in Africa (plus a small population in Gir Forest, India).',
+                clue: 'I am known as the "King of the Jungle," live in family groups called prides, and have a loud roar.',
+                fact: 'A lion’s roar is so powerful that it can be heard up to 8 kilometers (5 miles) away across the savanna!'
+            },
+            {
+                id: 'tiger',
+                name: 'Tiger',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Walking_tiger_female.jpg/960px-Walking_tiger_female.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/P.t.altaica_Tomak_Male.jpg/960px-P.t.altaica_Tomak_Male.jpg',
+                habitat: 'Tropical rainforests, mangrove swamps, and snowy forests across Asia (including India, Russia, and Sumatra).',
+                clue: 'I am the largest wild cat in the world with bright orange fur and dark black stripes.',
+                fact: 'Unlike most house cats, tigers love water and are strong swimmers that cool off in rivers and lakes!'
+            },
+            {
+                id: 'elephant',
+                name: 'Elephant',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/African_Bush_Elephant.jpg/960px-African_Bush_Elephant.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/African_elephant_warning_raised_trunk.jpg/960px-African_elephant_warning_raised_trunk.jpg',
+                habitat: 'Savannas, grasslands, and forests in Africa and southern Asia.',
+                clue: 'I am the largest land animal on Earth with giant ears, ivory tusks, and a long trunk.',
+                fact: 'An elephant’s trunk has over 40,000 muscles—more than the entire human body!'
+            },
+            {
+                id: 'emperor-penguin',
+                name: 'Emperor Penguin',
+                wwfUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Emperor_Penguin_Manchot_empereur.jpg/960px-Emperor_Penguin_Manchot_empereur.jpg',
+                fallbackUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Aptenodytes_forsteri_-Snow_Hill_Island%2C_Antarctica_-adults_and_juvenile-8.jpg/960px-Aptenodytes_forsteri_-Snow_Hill_Island%2C_Antarctica_-adults_and_juvenile-8.jpg',
+                habitat: 'The icy coast and frozen sea ice of Antarctica at the South Pole.',
+                clue: 'I am a flightless black-and-white bird with yellow neck feathers who swims in icy Antarctica.',
+                fact: 'Emperor penguins are the tallest and heaviest of all penguins and can dive over 500 meters deep into the icy ocean!'
+            }
+        ];
+
+        // Game State
+        let gameOrder = [];
+        let currentIndex = 0;
+        let currentLevel = 1; // 1 = Very pixelated, 2 = 50% pixelated of Level 1, 3 = 10% pixelated, 4 = Clear
+        let isRevealed = false;
+        let soundEnabled = true;
+        let loadedImage = null;
+        let completedIds = new Set();
+
+        // Pixelation Grid Configurations (4:3 Aspect Ratio)
+        // Level 1: Very pixelated (12 x 9 blocks = 108 giant pixels)
+        // Level 2: 50% pixelated of 1st level (24 x 18 blocks -> 50% smaller pixel block size)
+        // Level 3: 10% pixelated (120 x 90 blocks -> 10x finer grid than Level 1)
+        // Level 4: Clear full-resolution photo
+        const LEVEL_CONFIG = {
+            1: {
+                cols: 12,
+                rows: 9,
+                label: 'Level 1: Very Pixelated (12×9 grid)',
+                points: '400 Pts Possible',
+                nextBtnText: 'Level 2: 50% Pixelated'
+            },
+            2: {
+                cols: 24,
+                rows: 18,
+                label: 'Level 2: 50% Pixelated (24×18 grid)',
+                points: '300 Pts Possible',
+                nextBtnText: 'Level 3: 10% Pixelated'
+            },
+            3: {
+                cols: 120,
+                rows: 90,
+                label: 'Level 3: 10% Pixelated (120×90 grid)',
+                points: '200 Pts Possible',
+                nextBtnText: 'Level 4: Show Clear Photo'
+            },
+            4: {
+                cols: 0, // 0 indicates full native clarity
+                rows: 0,
+                label: 'Level 4: Crystal Clear Photo',
+                points: '100 Pts Possible',
+                nextBtnText: 'Maximum Clarity Reached'
+            }
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('animalCanvas');
+        const ctx = canvas.getContext('2d');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        /**
+         * Sound Effects Engine using Tone.js (Synthesized classroom chimes)
+         */
+        function playTone(type) {
+            if (!soundEnabled || typeof Tone === 'undefined') return;
+            try {
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -8;
+
+                if (type === 'levelUp') {
+                    synth.triggerAttackRelease(['C5', 'E5'], '16n');
+                } else if (type === 'reveal') {
+                    synth.triggerAttackRelease(['C5', 'E5', 'G5', 'C6'], '8n');
+                } else if (type === 'wrong') {
+                    synth.triggerAttackRelease(['E3', 'Eb3'], '8n');
+                } else if (type === 'correct') {
+                    synth.triggerAttackRelease(['F5', 'A5', 'C6'], '8n');
+                }
+            } catch (e) {
+                // Ignore audio context autoplay errors if user hasn't interacted yet
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            icon.className = soundEnabled ? 'fa-solid fa-volume-high text-lg text-emerald-600' : 'fa-solid fa-volume-xmark text-lg text-slate-400';
+        }
+
+        /**
+         * Text-to-Speech helper so English teachers can play pronunciation for students
+         */
+        function speakText(text) {
+            if (!soundEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9; // Slightly slower for ESL learners
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function speakAnimalInfo() {
+            const animal = gameOrder[currentIndex];
+            speakText(`${animal.name}. We can find them in: ${animal.habitat}`);
+        }
+
+        /**
+         * Initialize & Shuffle Game
+         */
+        function resetGame(shuffle = true) {
+            gameOrder = [...ANIMALS_DATA];
+            if (shuffle) {
+                for (let i = gameOrder.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [gameOrder[i], gameOrder[j]] = [gameOrder[j], gameOrder[i]];
+                }
+            }
+            currentIndex = 0;
+            completedIds.clear();
+            document.getElementById('summaryModal').classList.add('hidden');
+            buildWordBank();
+            loadCurrentAnimal();
+        }
+
+        /**
+         * Build Interactive Student Word Bank
+         */
+        function buildWordBank() {
+            const container = document.getElementById('wordBankChips');
+            container.innerHTML = '';
+            // Sort alphabetically for easy classroom lookup
+            const sorted = [...ANIMALS_DATA].sort((a, b) => a.name.localeCompare(b.name));
+            sorted.forEach(animal => {
+                const isDone = completedIds.has(animal.id);
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center gap-1.5 ${
+                    isDone 
+                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 line-through opacity-75' 
+                    : 'bg-sky-50 hover:bg-sky-100 text-sky-900 border-sky-200'
+                }`;
+                btn.innerHTML = `<i class="fa-solid ${isDone ? 'fa-check text-emerald-600' : 'fa-volume-low text-sky-500'}"></i> ${animal.name}`;
+                btn.onclick = () => speakText(animal.name);
+                container.appendChild(btn);
+            });
+        }
+
+        function toggleWordBank() {
+            const panel = document.getElementById('wordBankPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        /**
+         * Load Current Animal Photo & Reset Round UI
+         */
+        function loadCurrentAnimal() {
+            const animal = gameOrder[currentIndex];
+            currentLevel = 1;
+            isRevealed = false;
+
+            // Update Header & Dots
+            document.getElementById('currentRoundDisplay').textContent = currentIndex + 1;
+            document.getElementById('totalRoundsDisplay').textContent = gameOrder.length;
+            renderRoundDots();
+
+            // Reset Pop-Up & Reveal Button
+            document.getElementById('answerModal').classList.add('hidden');
+            document.getElementById('revealBtn').classList.add('pulse-hint');
+
+            // Show Loading Spinner
+            loadingOverlay.classList.remove('hidden');
+
+            // Load Real-Life Wildlife Photo
+            loadAnimalImageWithFallback(animal);
+            updateLevelUI();
+        }
+
+        function loadAnimalImageWithFallback(animal) {
+            const loadingText = loadingOverlay.querySelector('p');
+            loadingText.textContent = 'Loading Real Wildlife Photo...';
+
+            const tryLoadUrl = (url, onFail) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    loadedImage = img;
+                    loadingOverlay.classList.add('hidden');
+                    renderCanvas();
+                };
+                img.onerror = onFail;
+                img.src = url;
+            };
+
+            // Try primary real wildlife photo, then secondary real wildlife photo (never draws text/emojis on canvas)
+            tryLoadUrl(animal.wwfUrl, () => {
+                tryLoadUrl(animal.fallbackUrl, () => {
+                    loadingText.textContent = 'Photo blocked by network. Please check internet connection and retry.';
+                });
+            });
+        }
+
+        /**
+         * Core Canvas Pixelation Engine
+         * Draws the loaded real-life photo at Level 1 (12x9 blocks),
+         * Level 2 (24x18 blocks), Level 3 (120x90 blocks - 10% pixelated), or Level 4 (full resolution).
+         */
+        function renderCanvas() {
+            if (!loadedImage) return;
+
+            const container = canvas.parentElement;
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 600;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Calculate cover-fit dimensions so photo fills the 4:3 frame cleanly without distortion
+            const imgRatio = loadedImage.width / loadedImage.height;
+            const canvasRatio = width / height;
+            let drawW, drawH, offsetX, offsetY;
+
+            if (imgRatio > canvasRatio) {
+                drawH = height;
+                drawW = height * imgRatio;
+                offsetX = (width - drawW) / 2;
+                offsetY = 0;
+            } else {
+                drawW = width;
+                drawH = width / imgRatio;
+                offsetX = 0;
+                offsetY = (height - drawH) / 2;
+            }
+
+            const config = LEVEL_CONFIG[currentLevel];
+
+            if (currentLevel === 4 || config.cols === 0) {
+                // Level 4: Crystal Clear Photo
+                ctx.imageSmoothingEnabled = true;
+                ctx.drawImage(loadedImage, offsetX, offsetY, drawW, drawH);
+            } else {
+                // Levels 1, 2 & 3: Downsample to offscreen grid, then upscale with smoothing disabled
+                const offscreen = document.createElement('canvas');
+                offscreen.width = config.cols;
+                offscreen.height = config.rows;
+                const offCtx = offscreen.getContext('2d');
+
+                const smallScaleX = config.cols / width;
+                const smallScaleY = config.rows / height;
+
+                offCtx.imageSmoothingEnabled = true;
+                offCtx.drawImage(
+                    loadedImage,
+                    offsetX * smallScaleX,
+                    offsetY * smallScaleY,
+                    drawW * smallScaleX,
+                    drawH * smallScaleY
+                );
+
+                ctx.imageSmoothingEnabled = false;
+                ctx.mozImageSmoothingEnabled = false;
+                ctx.webkitImageSmoothingEnabled = false;
+                ctx.msImageSmoothingEnabled = false;
+                ctx.drawImage(offscreen, 0, 0, config.cols, config.rows, 0, 0, width, height);
+            }
+        }
+
+        /**
+         * Pixel Level Controls (Level 1 -> Level 2 -> Level 3 -> Level 4)
+         */
+        function setPixelLevel(level) {
+            currentLevel = level;
+            updateLevelUI();
+            renderCanvas();
+            playTone('levelUp');
+        }
+
+        function advancePixelLevel() {
+            if (currentLevel < 4) {
+                setPixelLevel(currentLevel + 1);
+            }
+        }
+
+        function updateLevelUI() {
+            const config = LEVEL_CONFIG[currentLevel];
+
+            // Update Level Pills
+            [1, 2, 3, 4].forEach(lvl => {
+                const pill = document.getElementById(`pill-${lvl}`);
+                if (!pill) return;
+                if (lvl === currentLevel) {
+                    pill.className = 'px-2.5 py-1 rounded-full text-xs font-extrabold transition bg-emerald-600 text-white shadow-sm';
+                } else {
+                    pill.className = 'px-2.5 py-1 rounded-full text-xs font-extrabold transition bg-slate-100 text-slate-600 hover:bg-slate-200';
+                }
+            });
+
+            // Update Canvas Overlay & Points Badge
+            document.getElementById('levelDescriptionText').textContent = config.label;
+            document.getElementById('pointsBadge').innerHTML = `<i class="fa-solid fa-trophy mr-1"></i> ${config.points}`;
+
+            // Update Next Level Button
+            const nextBtn = document.getElementById('nextLevelBtn');
+            const nextBtnText = document.getElementById('nextLevelBtnText');
+            nextBtnText.textContent = config.nextBtnText;
+            nextBtn.disabled = currentLevel >= 4;
+        }
+
+        /**
+         * Reveal Answer & Habitat Pop-Up Handler
+         */
+        function revealAnswer(skipSound = false) {
+            const animal = gameOrder[currentIndex];
+            isRevealed = true;
+            completedIds.add(animal.id);
+
+            // Automatically jump to Level 4 (Clear Photo) behind the pop-up
+            currentLevel = 4;
+            updateLevelUI();
+            renderCanvas();
+
+            if (!skipSound) {
+                playTone('reveal');
+            }
+
+            // Populate Answer & Habitat Pop-Up
+            document.getElementById('revealedName').textContent = animal.name;
+            document.getElementById('revealedHabitat').textContent = animal.habitat;
+            document.getElementById('revealedFact').textContent = animal.fact;
+
+            // Update Button Label if on last animal
+            const nextBtn = document.getElementById('nextAnimalBtn');
+            if (currentIndex === gameOrder.length - 1) {
+                nextBtn.innerHTML = `<span>Class Summary</span> <i class="fa-solid fa-flag-checkered"></i>`;
+            } else {
+                nextBtn.innerHTML = `<span>Next Wild Animal</span> <i class="fa-solid fa-arrow-right"></i>`;
+            }
+
+            // Show Pop-Up Modal
+            document.getElementById('answerModal').classList.remove('hidden');
+            document.getElementById('revealBtn').classList.remove('pulse-hint');
+
+            // Speak the animal name aloud for ESL pronunciation reinforcement
+            speakText(animal.name);
+
+            buildWordBank();
+            renderRoundDots();
+        }
+
+        function closeAnswerModal() {
+            document.getElementById('answerModal').classList.add('hidden');
+        }
+
+        /**
+         * Round Navigation
+         */
+        function nextAnimal() {
+            closeAnswerModal();
+            if (currentIndex < gameOrder.length - 1) {
+                currentIndex++;
+                loadCurrentAnimal();
+            } else {
+                showSummaryModal();
+            }
+        }
+
+        function prevAnimal() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadCurrentAnimal();
+            }
+        }
+
+        function jumpToAnimal(index) {
+            currentIndex = index;
+            loadCurrentAnimal();
+        }
+
+        function renderRoundDots() {
+            const container = document.getElementById('roundDots');
+            container.innerHTML = '';
+            gameOrder.forEach((animal, idx) => {
+                const isCurrent = idx === currentIndex;
+                const isDone = completedIds.has(animal.id);
+                const dot = document.createElement('button');
+                dot.onclick = () => jumpToAnimal(idx);
+                dot.title = `Animal ${idx + 1}`;
+                dot.className = `w-3 h-3 rounded-full transition-all ${
+                    isCurrent 
+                    ? 'bg-amber-500 scale-125 ring-2 ring-amber-200' 
+                    : isDone 
+                        ? 'bg-emerald-500' 
+                        : 'bg-slate-300 hover:bg-slate-400'
+                }`;
+                container.appendChild(dot);
+            });
+        }
+
+        function showSummaryModal() {
+            playTone('reveal');
+            const list = document.getElementById('masteredList');
+            list.innerHTML = '';
+            ANIMALS_DATA.forEach(a => {
+                const tag = document.createElement('span');
+                tag.className = 'bg-white text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-xl text-xs font-bold shadow-sm';
+                tag.textContent = a.name;
+                list.appendChild(tag);
+            });
+            document.getElementById('summaryModal').classList.remove('hidden');
+        }
+
+        // Responsive Canvas Redraw on Window Resize
+        window.addEventListener('resize', () => {
+            renderCanvas();
+        });
+
+        // Start Game on Load
+        window.onload = () => {
+            resetGame(true);
+        };
+    </script>
+</body>
+</html>
